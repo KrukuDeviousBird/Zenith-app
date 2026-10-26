@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pl">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zenith</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- ukryte do czasu, aż app.js potwierdzi, że ktoś jest zalogowany -->
+  <div id="aplikacja" hidden>
+    <div id="navbar">
+      <p id="navInfo">Zalogowano jako: <b id="kto"></b> <button id="wylogujbutton" onclick="wyloguj()">Wyloguj</button>
+      </p>
+      <p id="navbuttons">
+        <button onclick="pokaz('zadania')">Zadania</button>
+        <button onclick="pokaz('notatki')">Notatki</button>
+        <button onclick="pokaz('trening')">Trening</button>
+        <button onclick="pokaz('hasla')">Hasła</button>
+      </p>
+
+    </div>
+
+
+    <!-- ===================== ZADANIA ===================== -->
+    <div id="zadania">
+
+      <!-- lista zadań -->
+      <div id="zadaniaLista">
+        <h2>Zadania</h2>
+        <p>
+          <input id="zadanieTytul" type="text" placeholder="Tytuł zadania">
+          Termin: <input id="zadanieTermin" type="date">
+        </p>
+        <p><textarea id="zadanieOpis" rows="3" cols="40" placeholder="Opis (opcjonalnie)"></textarea></p>
+        <p>
+          <button onclick="dodajZadanie()">Dodaj zadanie</button>
+          <button onclick="wczytajZadania()">Odśwież</button>
+        </p>
+        <ul id="listaZadan"></ul>
+      </div>
+
+      <!-- szczegóły zadania -->
+      <div id="zadanieSzczegoly" hidden>
+        <p style="margin-top: 0px;padding-top: 8px;">
+          <button id="zamknijZadanie" onclick="zamknijZadanie()">&larr; Wróć do listy</button>
+          <button id="odswiezSzczegoly" onclick="odswiezSzczegoly()">Odśwież</button>
+        </p>
+
+        <div id="szSzczegolyCon">
+          <h2 id="szTytul"></h2>
+          <p id="szInfo"></p>
+          <div id="szOpis"></div>
+        </div>
+
+
+        <!-- edycja (widoczna tylko dla właściciela) -->
+        <div id="szEdycja" hidden>
+          <h3>Edytuj zadanie</h3>
+          <p><input id="edTytul" type="text" placeholder="Tytuł"></p>
+          <p><textarea id="edOpis" rows="3" cols="40" placeholder="Opis"></textarea></p>
+          <p id="edTerminP">
+            Termin: <input id="edTermin" type="date">
+            <label><input id="edGotowe" type="checkbox"> Zrobione</label>
+          </p>
+          <button onclick="zapiszZadanie()">Zapisz zmiany</button>
+          <button id="delete" onclick="usunZadanie()">Usuń zadanie</button>
+        </div>
+
+        <div id="szCzlonkowieCon">
+          <h3>Użytkownicy w zadaniu</h3>
+          <ul id="szCzlonkowie"></ul>
+          <p id="szDodajCzlonka" hidden>
+            <input id="czlonekNazwa" type="text" placeholder="Nazwa użytkownika">
+            <button onclick="dodajCzlonka()">Dodaj do zadania</button>
+          </p>
+        </div>
+
+        <div id="szPodzadaniaCon">
+          <h3>Podzadania</h3>
+          <p id="szPostep"></p>
+          <ul id="szPodzadania"></ul>
+          <p><input id="podTytul" type="text" placeholder="Tytuł podzadania"></p>
+          <p><textarea id="podOpis" rows="2" cols="40" placeholder="Opis podzadania (opcjonalnie)"></textarea></p>
+          <button onclick="dodajPodzadanie()">Dodaj podzadanie</button>
+        </div>
+
+        <div id="szKomentarzeCon">
+          <h3>Komentarze</h3>
+          <ul id="szKomentarze"></ul>
+          <p><textarea id="komTresc" rows="3" cols="40" placeholder="Napisz komentarz"></textarea></p>
+          <button id="dodajKomentarz" onclick="dodajKomentarz()">Dodaj komentarz</button>
+        </div>
+
+      </div>
+
+    </div>
+    <!-- ===================== KONIEC ZADAŃ ===================== -->
+
+    <!-- ===================== NOTATKI ===================== -->
+    <div id="notatki" hidden>
+      <h2>Notatki</h2>
+      <p><input id="notatkaTytul" type="text" placeholder="Tytuł"></p>
+      <p><textarea id="notatkaTresc" rows="4" cols="40" placeholder="Treść"></textarea></p>
+      <button id="zapiszNotatke" onclick="dodajNotatke()">Zapisz notatkę</button>
+      <ul id="listaNotatek"></ul>
+    </div>
+
+    <!-- ===================== TRENING ===================== -->
+    <div id="trening" hidden>
+      <div id="trNav">
+        <p id="trMenu">
+          <button onclick="pokazTr('trPlany')">Plany</button>
+          <button onclick="pokazTr('trSesja')">Trening</button>
+          <button onclick="pokazTr('trStaty')">Statystyki</button>
+        </p>
+        <h2>Trening</h2>
+      </div>
+
+
+      <!-- ---------- PLANY ---------- -->
+      <div id="trPlany">
+        <h3>Nowy plan</h3>
+        <p>
+          <input id="planNazwa" type="text" placeholder="Nazwa planu, np. Push / Pull / Legs">
+          <button class="btn" onclick="dodajPlan()">Utwórz plan</button>
+        </p>
+
+        <h3>Moje plany</h3>
+        <div id="listaPlanow"></div>
+      </div>
+
+      <!-- ---------- TRENING ---------- -->
+      <div id="trSesja" hidden>
+        <h3>Zacznij trening</h3>
+        <p>
+          Z planu: <select id="sesjaPlan"></select>
+          <button  class="btn" onclick="zacznijZPlanu()">Zacznij z planu</button>
+        </p>
+        <p>
+          Wolny trening:
+          <input id="trNazwa" type="text" placeholder="Nazwa treningu, np. Push">
+          <button class="btn" onclick="dodajTrening()">Zacznij trening</button>
+        </p>
+
+        <h3>Aktywny trening: <span id="aktywnyNazwa">brak</span></h3>
+        <div id="formularzSerii"></div>
+        <button id="zapiszWyniki" onclick="zapiszWyniki()" hidden>Zapisz wyniki</button>
+
+        <h3>Historia i wolne serie</h3>
+        <p>
+          Trening: <select id="trWybor" onchange="wczytajSerie()"></select>
+          <button class="btn-usun" onclick="usunTrening()">Usuń trening</button>
+        </p>
+        <p>
+          <input id="serCw" type="text" placeholder="Ćwiczenie">
+          <input id="serPow" type="number" placeholder="Powtórzenia">
+          <input id="serKg" type="number" step="0.5" placeholder="Kg">
+          <button class="btn" onclick="dodajSerie()">Dodaj serię</button>
+        </p>
+        <ul id="listaSerii"></ul>
+      </div>
+
+      <!-- ---------- STATYSTYKI ---------- -->
+      <div id="trStaty" hidden>
+        <h3>Progres ćwiczenia</h3>
+        <p>
+          Ćwiczenie: <select id="statCw" onchange="rysujStaty()"></select>
+          <button class="btn" onclick="wczytajStaty()">Odśwież</button>
+        </p>
+        <p id="statPodsumowanie"></p>
+        <div id="wykresCwBox"><canvas id="wykresCw"></canvas></div>
+
+        <h3>Progres wszystkich ćwiczeń (%)</h3>
+        <div id="wykresWszystkieBox"><canvas id="wykresWszystkie"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ===================== HASŁA (sejf) ===================== -->
+    <div id="hasla" hidden>
+      <h2>Hasła</h2>
+
+      <div id="sejfBlokada">
+        <p>Podaj hasło główne sejfu (inne niż hasło do konta):</p>
+        <input id="glowne" type="password" placeholder="Hasło główne" autocomplete="off">
+        <button onclick="odblokujSejf()">Odblokuj</button>
+      </div>
+
+      <div id="sejf" hidden>
+        <p><button onclick="zablokujSejf()">Zablokuj sejf</button></p>
+        <p>
+          <input id="hasSerwis" type="text" placeholder="Serwis, np. Netflix">
+          <input id="hasLogin" type="text" placeholder="Login lub e-mail" autocomplete="off">
+          <input id="hasSekret" type="password" placeholder="Hasło" autocomplete="new-password">
+          <button onclick="dodajHaslo()">Zapisz</button>
+        </p>
+        <ul id="listaHasel"></ul>
+      </div>
+    </div>
+
+  </div> <!-- koniec #aplikacja -->
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="js/baza.js"></script>
+  <script src="js/zadania.js"></script>
+  <script src="js/notatki.js"></script>
+  <script src="js/trening.js"></script>
+  <script src="js/hasla.js"></script>
+  <script src="js/app.js"></script> <!-- app.js zawsze ostatni -->
+</body>
+
+</html>

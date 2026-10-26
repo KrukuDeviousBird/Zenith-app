@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="pl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Logowanie</title>
+</head>
+
+<body>
+
+    <h1>Logowanie</h1>
+    <p><input id="login" type="text" placeholder="Nazwa użytkownika" autocomplete="username"></p>
+    <p><input id="haslo" type="password" placeholder="Hasło" autocomplete="current-password"></p>
+    <button onclick="zaloguj()">Zaloguj się</button>
+    <button onclick="zarejestruj()">Załóż konto</button>
+    <p id="blad"></p>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/baza.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+
+</html>
