@@ -1,0 +1,121 @@
+/* Menu boczne wysuwane z lewej strony.
+   To tylko mechanika (pozycja, animacja, przyciemnione tło).
+   Wygląd (kolory, czcionki, odstępy) ustawiasz w style.css, który ładuje się po tym pliku. */
+
+span.menu-strzalka {
+    background-color: #423B49;
+}
+
+span.menu-strzalka:hover {
+    background-color: #423B49;
+}
+
+#menuPanel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1001;
+    width: min(280px, 85vw);
+    height: 100%;
+    box-sizing: border-box;
+    padding: 16px;
+    overflow-y: auto;
+    background: Canvas;
+    color: CanvasText;
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.25);
+    background-color: #080A0F;
+
+    /* zamknięty: schowany za lewą krawędzią i niedostępny dla klawiatury */
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: transform 0.25s ease, visibility 0s linear 0.25s;
+}
+
+#menuPanel.otwarty {
+    transform: translateX(0);
+    visibility: visible;
+    transition: transform 0.25s ease, visibility 0s;
+}
+
+/* przyciemnione tło, kliknięcie zamyka menu */
+#menuTlo {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0s linear 0.25s;
+}
+
+#menuTlo.otwarty {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.25s ease, visibility 0s;
+}
+
+#menuNaglowek {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+#menuLista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+#menuLista li {
+    margin-bottom: 6px;
+}
+
+.menu-pozycja {
+    width: 100%;
+    text-align: left;
+}
+
+/* Trening rozwija listę 4 opcji */
+.menu-grupa {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.menu-podlista {
+    list-style: none;
+    margin: 6px 0 0;
+    padding: 0 0 0 16px;
+}
+
+.menu-podlista[hidden] {
+    display: none;
+}
+
+.menu-podlista li {
+    margin-bottom: 6px;
+}
+
+.menu-podpozycja {
+    width: 100%;
+    text-align: left;
+}
+
+/* gdy menu jest otwarte, strona pod spodem nie przewija się */
+body.menu-otwarte {
+    overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    #menuPanel,
+    #menuTlo {
+        transition: none;
+    }
+}
+
+button#menuZamknij.btn {
+    width: 4vh;
+    height: 4vh;
+}

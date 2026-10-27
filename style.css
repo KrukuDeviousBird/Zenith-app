@@ -35,7 +35,7 @@
 
 #navInfo {
     padding-right: 8px;
-    padding-top: 8px;
+    padding-top: 5px;
     margin: 0;
     float: right;
 }
@@ -93,8 +93,13 @@ textarea {
     background-color: #A7A7E1;
 }
 
+input#zadanieTytul, input#zadanieTermin, input#edTytul, input#edTermin, input#czlonekNazwa, input#podTytul {
+    height: 3vh;
+}
+
 #listaZadan {
     color: #A7A7E1;
+    padding-left: 20px;
 }
 
 #listaZadan span {
@@ -303,6 +308,10 @@ h3 {
     background-color: #423B49;
 }
 
+input#notatkaTytul {
+    height: 3vh;
+}
+
 /* TRENING */
 
 /* TRENING NAVBAR */
@@ -346,6 +355,11 @@ h3 {
     border: 1px solid #A7A7E1;
     border-radius: 3px;
     color: #E5E7EB;
+    height: 3vh;
+}
+
+input.eSerie, input.nSerie {
+    width: 5vh;
 }
 
 .btn-usun {
@@ -388,6 +402,11 @@ h3 {
     border: 1px solid #A7A7E1;
     border-radius: 3px;
     color: #E5E7EB;
+    height: 4vh;
+}
+
+input.wPow, input.wKg {
+    width: 5vh;
 }
 
 #trSesja select {
@@ -395,6 +414,7 @@ h3 {
     border: 1px solid #A7A7E1;
     border-radius: 3px;
     color: #E5E7EB;
+    height: 4vh;
 }
 
 /* TRENING STATYSTYKI */
@@ -409,6 +429,7 @@ h3 {
     border: 1px solid #A7A7E1;
     border-radius: 3px;
     color: #E5E7EB;
+    height: 3vh;
 }
 
 #wykresCwBox,
@@ -440,11 +461,11 @@ h3 {
     border: 1px solid #A7A7E1;
     border-radius: 3px;
     color: #E5E7EB;
+        height: 3vh;
 }
 
 #hasla span {
     background-color: #423B49;
-    border: 1px solid #A7A7E1;
-    border-radius: 3px;
+
     color: #E5E7EB;
 }

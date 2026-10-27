@@ -73,46 +73,109 @@ async function dodajHaslo() {
   wczytajHasla();
 }
 
+// przycisk z klasą btn
+function przyciskKarty(tekst, akcja) {
+  const b = document.createElement('button');
+  b.className = 'btn';
+  b.textContent = tekst;
+  b.onclick = akcja;
+  return b;
+}
+
+// jedno pole karty: etykieta + wartość (wypełniana dopiero po rozwinięciu)
+function poleKarty(etykieta) {
+  const wiersz = document.createElement('p');
+  wiersz.className = 'karta-pole';
+  const et = document.createElement('span');
+  et.className = 'karta-etykieta';
+  et.textContent = etykieta + ': ';
+  const wartosc = document.createElement('span');
+  wartosc.className = 'karta-wartosc';
+  wiersz.append(et, wartosc);
+  return { wiersz, wartosc };
+}
+
+// każda karta jest domyślnie zwinięta (widać tylko nazwę serwisu);
+// kliknięcie nazwy odszyfrowuje wpis i pokazuje login, hasło i przyciski
 async function wczytajHasla() {
   const { data, error } = await db.from('passwords').select('*').order('service');
   if (error) { alert('Błąd: ' + error.message); return; }
 
   const lista = el('listaHasel');
   lista.innerHTML = '';
+
+  if (data.length === 0) {
+    const pusty = document.createElement('li');
+    pusty.textContent = 'Sejf jest pusty. Dodaj pierwsze hasło powyżej.';
+    lista.append(pusty);
+    return;
+  }
+
   data.forEach((p) => {
-    const li = document.createElement('li');
-    const nazwa = document.createElement('b');
-    nazwa.textContent = p.service + ' ';
-    const wynik = document.createElement('span');
+    const karta = document.createElement('li');
+    karta.className = 'karta-hasla';
 
-    const pokazBtn = document.createElement('button');
-    pokazBtn.className = 'btn';
-    pokazBtn.textContent = 'Pokaż';
-    pokazBtn.onclick = async () => {
-      if (wynik.textContent) { wynik.textContent = ''; pokazBtn.textContent = 'Pokaż'; return; }
-      try {
-        const dane = JSON.parse(await odszyfruj(p.secret_enc, hasloGlowne));
-        wynik.textContent = dane.login + ' / ' + dane.haslo + ' ';
-        pokazBtn.textContent = 'Ukryj';
-      } catch (e) { alert('Nie udało się odszyfrować wpisu.'); }
-    };
+    const naglowek = document.createElement('button');
+    naglowek.className = 'btn karta-naglowek';
+    naglowek.textContent = '▸ ' + p.service;
+    naglowek.setAttribute('aria-expanded', 'false');
 
-    const kopiujBtn = document.createElement('button');
-    kopiujBtn.className = 'btn';
-    kopiujBtn.textContent = 'Kopiuj hasło';
-    kopiujBtn.onclick = async () => {
-      try {
-        const dane = JSON.parse(await odszyfruj(p.secret_enc, hasloGlowne));
-        await navigator.clipboard.writeText(dane.haslo);
-        alert('Skopiowano hasło.');
-      } catch (e) { alert('Nie udało się skopiować.'); }
-    };
+    const szczegoly = document.createElement('div');
+    szczegoly.className = 'karta-szczegoly';
+    szczegoly.hidden = true;
+
+    const login = poleKarty('Login');
+    const haslo = poleKarty('Hasło');
+
+    let dane = null; // odszyfrowane dane, trzymane tylko gdy karta jest rozwinięta
+
+    // kopiowanie, potwierdzenie na samym przycisku zamiast okienka
+    function kopiuj(pole, przycisk) {
+      return async () => {
+        try {
+          await navigator.clipboard.writeText((dane && dane[pole]) || '');
+          const stary = przycisk.textContent;
+          przycisk.textContent = 'Skopiowano ✓';
+          setTimeout(() => { przycisk.textContent = stary; }, 1200);
+        } catch (e) { alert('Nie udało się skopiować.'); }
+      };
+    }
+    const kopiujLogin = przyciskKarty('Kopiuj login', null);
+    kopiujLogin.onclick = kopiuj('login', kopiujLogin);
+    const kopiujHaslo = przyciskKarty('Kopiuj hasło', null);
+    kopiujHaslo.onclick = kopiuj('haslo', kopiujHaslo);
 
     const usunBtn = przyciskUsun('passwords', p.id, wczytajHasla);
     usunBtn.classList.add('btn-usun');
 
-    li.append(nazwa, wynik, pokazBtn, ' ', kopiujBtn, ' ', usunBtn);
-    lista.append(li);
+    const przyciski = document.createElement('p');
+    przyciski.className = 'karta-przyciski';
+    przyciski.append(kopiujLogin, ' ', kopiujHaslo, ' ', usunBtn);
+
+    szczegoly.append(login.wiersz, haslo.wiersz, przyciski);
+
+    naglowek.onclick = async () => {
+      if (!szczegoly.hidden) {            // zwijanie: czyścimy odszyfrowane dane
+        szczegoly.hidden = true;
+        dane = null;
+        login.wartosc.textContent = '';
+        haslo.wartosc.textContent = '';
+        naglowek.textContent = '▸ ' + p.service;
+        naglowek.setAttribute('aria-expanded', 'false');
+        return;
+      }
+      try {                               // rozwijanie: odszyfrowujemy wpis
+        dane = JSON.parse(await odszyfruj(p.secret_enc, hasloGlowne));
+        login.wartosc.textContent = dane.login || '(brak loginu)';
+        haslo.wartosc.textContent = dane.haslo;
+        szczegoly.hidden = false;
+        naglowek.textContent = '▾ ' + p.service;
+        naglowek.setAttribute('aria-expanded', 'true');
+      } catch (e) { alert('Nie udało się odszyfrować wpisu.'); }
+    };
+
+    karta.append(naglowek, szczegoly);
+    lista.append(karta);
   });
 }
 
