@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Zenith</title>
+  <link rel="stylesheet" href="menu.css">   <!-- mechanika wysuwanego menu; Twój style.css ładuje się po nim i może wszystko nadpisać -->
   <link rel="stylesheet" href="style.css">
 </head>
 
@@ -13,16 +14,38 @@
   <!-- ukryte do czasu, aż app.js potwierdzi, że ktoś jest zalogowany -->
   <div id="aplikacja" hidden>
     <div id="navbar">
-      <p id="navInfo">Zalogowano jako: <b id="kto"></b> <button id="wylogujbutton" onclick="wyloguj()">Wyloguj</button>
+      <p id="navInfo"><b id="kto"></b> <button id="wylogujbutton" onclick="wyloguj()">Wyloguj</button>
       </p>
       <p id="navbuttons">
-        <button onclick="pokaz('zadania')">Zadania</button>
-        <button onclick="pokaz('notatki')">Notatki</button>
-        <button onclick="pokaz('trening')">Trening</button>
-        <button onclick="pokaz('hasla')">Hasła</button>
+        <button id="menuBtn" class="btn" aria-controls="menuPanel" aria-expanded="false">&#9776;</button>
       </p>
-
     </div>
+
+    <!-- ===================== MENU BOCZNE ===================== -->
+    <!-- obsługa w js/menu.js, wysuwanie z lewej w menu.css; wybór sekcji używa istniejącej funkcji pokaz() -->
+    <div id="menuTlo"></div>
+    <nav id="menuPanel" aria-label="Sekcje aplikacji">
+      <div id="menuNaglowek">
+        <b id="menuTytul">Zenith</b>
+        <button id="menuZamknij" class="btn" aria-label="Zamknij menu">&times;</button>
+      </div>
+      <ul id="menuLista">
+        <li><button class="btn menu-pozycja" data-sekcja="zadania">Zadania</button></li>
+        <li><button class="btn menu-pozycja" data-sekcja="notatki">Notatki</button></li>
+        <li>
+          <!-- Trening: kliknięcie rozwija 4 opcje (dawne przyciski z sekcji Trening) -->
+          <button id="menuTrening" class="btn menu-pozycja menu-grupa" data-sekcja="trening"
+            aria-expanded="false" aria-controls="menuTreningPod">Trening <span class="menu-strzalka">&#9656;</span></button>
+          <ul id="menuTreningPod" class="menu-podlista" hidden>
+            <li><button class="btn menu-podpozycja" data-pod="trPlany">Plany</button></li>
+            <li><button class="btn menu-podpozycja" data-pod="trSesja">Treningi</button></li>
+            <li><button class="btn menu-podpozycja" data-pod="trStaty">Statystyki</button></li>
+            <li><button class="btn menu-podpozycja" data-pod="trOsiagi">Nowe osiągi</button></li>
+          </ul>
+        </li>
+        <li><button class="btn menu-pozycja" data-sekcja="hasla">Hasła</button></li>
+      </ul>
+    </nav>
 
 
     <!-- ===================== ZADANIA ===================== -->
@@ -112,11 +135,6 @@
     <!-- ===================== TRENING ===================== -->
     <div id="trening" hidden>
       <div id="trNav">
-        <p id="trMenu">
-          <button onclick="pokazTr('trPlany')">Plany</button>
-          <button onclick="pokazTr('trSesja')">Trening</button>
-          <button onclick="pokazTr('trStaty')">Statystyki</button>
-        </p>
         <h2>Trening</h2>
       </div>
 
@@ -210,6 +228,7 @@
   <script src="js/notatki.js"></script>
   <script src="js/trening.js"></script>
   <script src="js/hasla.js"></script>
+  <script src="js/menu.js"></script>
   <script src="js/app.js"></script> <!-- app.js zawsze ostatni -->
 </body>
 

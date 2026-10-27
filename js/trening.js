@@ -1,6 +1,7 @@
 // ===== stan =====
 let aktywnyTrening = null;   // trening, do którego zapisujesz wyniki
-let planCw = [];             // ćwiczenia planu w aktywnym treningu
+let aktywneCw = [];          // ćwiczenia w otwartym treningu: [{ nazwa, serie }]
+let zapisane = {};           // zapisane serie otwartego treningu: { ćwiczenie: [wiersze z bazy] }
 let statDane = {};           // { ćwiczenie: { data: najlepszy szacowany max } }
 let wykres1 = null;
 let wykres2 = null;
@@ -162,26 +163,96 @@ async function zapiszCwiczenie(id, li, przycisk) {
 }
 
 // ===== TRENING (sesja) =====
+// data lokalna (RRRR-MM-DD), żeby "dzisiaj" zgadzało się z Twoją strefą czasową
+function dzisiaj() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
 function ustawAktywny(tr) {
   aktywnyTrening = tr;
-  document.getElementById('aktywnyNazwa').textContent = tr ? tr.nazwa : 'brak';
+  document.getElementById('aktywnyNazwa').textContent = tr ? `${tr.nazwa} (${tr.data})` : 'brak';
+  document.getElementById('zapiszWyniki').hidden = !tr;
+}
+
+// pyta o zgodę, jeśli w otwartym treningu są niezapisane zmiany
+function potwierdzPrzelaczenie() {
+  const niezapisane = document.querySelector('#formularzSerii .cwBlok[data-zmienione="1"]');
+  return !niezapisane || confirm('Masz niezapisane zmiany w ćwiczeniach. Przełączyć trening mimo to?');
 }
 
 async function zacznijZPlanu() {
   const select = document.getElementById('sesjaPlan');
   const planId = select.value;
   if (!planId) return alert('Najpierw utwórz plan w zakładce Plany');
+  if (!potwierdzPrzelaczenie()) return;
+
+  // jeśli dziś już zacząłeś trening z tego planu, można do niego wrócić
+  const { data: istn } = await db.from('treningi')
+    .select('id, nazwa, data, plan_id')
+    .eq('plan_id', planId).eq('data', dzisiaj())
+    .order('id', { ascending: false }).limit(1);
+  if (istn && istn.length > 0 &&
+      confirm('Masz już dziś rozpoczęty trening z tego planu.\nOK = kontynuuj go, Anuluj = zacznij nowy.')) {
+    return otworzTrening(istn[0]);
+  }
 
   const { data: tr, error } = await db.from('treningi')
-    .insert({ nazwa: select.selectedOptions[0].text, plan_id: planId })
+    .insert({ nazwa: select.selectedOptions[0].text, plan_id: planId, data: dzisiaj() })
     .select().single();
   if (error) return alert('Błąd: ' + error.message);
+  await otworzTrening(tr);
+}
 
-  const { data: cw, error: e2 } = await db.from('plan_cwiczenia')
-    .select('*').eq('plan_id', planId).order('id');
+async function dodajTrening() {
+  const nazwa = document.getElementById('trNazwa').value.trim();
+  if (!nazwa) return alert('Podaj nazwę treningu');
+  if (!potwierdzPrzelaczenie()) return;
+  const { data, error } = await db.from('treningi')
+    .insert({ nazwa, data: dzisiaj() }).select().single();
+  if (error) return alert('Błąd: ' + error.message);
+  document.getElementById('trNazwa').value = '';
+  await otworzTrening(data);
+}
+
+// wraca do wybranego treningu z historii, żeby go uzupełnić lub poprawić
+async function edytujWybranyTrening() {
+  const id = document.getElementById('trWybor').value;
+  if (!id) return alert('Wybierz trening z listy');
+  if (!potwierdzPrzelaczenie()) return;
+  const { data, error } = await db.from('treningi')
+    .select('id, nazwa, data, plan_id').eq('id', id).single();
+  if (error) return alert('Błąd: ' + error.message);
+  await otworzTrening(data);
+  document.getElementById('formularzSerii').scrollIntoView({ behavior: 'smooth' });
+}
+
+// otwiera trening: ćwiczenia z planu + to, co już zapisano
+async function otworzTrening(tr) {
+  let zPlanu = [];
+  if (tr.plan_id) {
+    const { data, error } = await db.from('plan_cwiczenia')
+      .select('nazwa, serie').eq('plan_id', tr.plan_id).order('id');
+    if (error) return alert('Błąd: ' + error.message);
+    zPlanu = data;
+  }
+
+  const { data: serie, error: e2 } = await db.from('serie')
+    .select('*').eq('trening_id', tr.id).order('id');
   if (e2) return alert('Błąd: ' + e2.message);
 
-  planCw = cw;
+  zapisane = {};
+  serie.forEach(s => { (zapisane[s.cwiczenie] = zapisane[s.cwiczenie] || []).push(s); });
+  Object.values(zapisane).forEach(lista =>
+    lista.sort((x, y) => (x.nr_serii ?? x.id) - (y.nr_serii ?? y.id)));
+
+  aktywneCw = zPlanu.map(c => ({ nazwa: c.nazwa, serie: c.serie }));
+  Object.keys(zapisane).forEach(nazwa => {
+    if (!aktywneCw.some(c => c.nazwa === nazwa)) {
+      aktywneCw.push({ nazwa, serie: zapisane[nazwa].length });
+    }
+  });
+
   ustawAktywny(tr);
   zbudujFormularz();
   await wczytajTreningi(tr.id);
@@ -190,70 +261,181 @@ async function zacznijZPlanu() {
 function zbudujFormularz() {
   const box = document.getElementById('formularzSerii');
   box.innerHTML = '';
-  planCw.forEach(c => {
-    const h = document.createElement('h4');
-    h.textContent = `${c.nazwa} (serie: ${c.serie})`;
-    box.appendChild(h);
-    for (let s = 1; s <= c.serie; s++) {
-      const p = document.createElement('p');
-      p.className = 'wiersz';
-      p.dataset.cw = c.nazwa;
-      p.dataset.nr = s;
-      p.innerHTML = `Seria ${s}:
-        <input type="number" class="wPow" placeholder="Powt.">
-        <input type="number" class="wKg" step="0.5" placeholder="Kg">`;
-      box.appendChild(p);
-    }
-  });
-  document.getElementById('zapiszWyniki').hidden = planCw.length === 0;
+  if (!aktywnyTrening) return;
+
+  const gora = document.createElement('p');
+  const zamknij = document.createElement('button');
+  zamknij.id = 'zamknijTrening';
+  zamknij.className = 'btn';
+  zamknij.textContent = 'Zamknij trening';
+  zamknij.onclick = zamknijTrening;
+  gora.append(zamknij);
+  box.append(gora);
+
+  const bloki = document.createElement('div');
+  bloki.id = 'blokiCw';
+  if (aktywneCw.length === 0) {
+    const info = document.createElement('p');
+    info.id = 'pustyTrening';
+    info.textContent = 'Ten trening nie ma jeszcze ćwiczeń. Dodaj pierwsze poniżej.';
+    bloki.append(info);
+  }
+  aktywneCw.forEach(c => bloki.append(zbudujBlok(c)));
+  box.append(bloki);
+
+  // dodawanie ćwiczenia spoza planu
+  const dod = document.createElement('p');
+  dod.id = 'dodajCwWiersz';
+  dod.innerHTML = `<input type="text" id="dodCwNazwa" placeholder="Nowe ćwiczenie">
+    <input type="number" id="dodCwSerie" min="1" placeholder="Serie (domyślnie 3)"> `;
+  const dodaj = document.createElement('button');
+  dodaj.id = 'dodajCwDoTreningu';
+  dodaj.className = 'btn';
+  dodaj.textContent = 'Dodaj ćwiczenie do treningu';
+  dodaj.onclick = dodajCwiczenieDoTreningu;
+  dod.append(dodaj);
+  box.append(dod);
 }
 
+// jeden blok = jedno ćwiczenie ze swoimi seriami i własnym przyciskiem zapisu
+function zbudujBlok(c) {
+  const zap = zapisane[c.nazwa] || [];
+  const blok = document.createElement('div');
+  blok.className = 'cwBlok';
+  blok.dataset.cw = c.nazwa;
+
+  const h = document.createElement('h4');
+  h.textContent = c.nazwa + ' ';
+  const status = document.createElement('span');
+  status.className = 'cwStatus';
+  status.textContent = zap.length ? '✓ zapisane' : '';
+  h.append(status);
+  blok.append(h);
+
+  const wiersze = document.createElement('div');
+  wiersze.className = 'cwWiersze';
+  const ile = Math.max(c.serie || 1, zap.length, 1);
+  for (let i = 0; i < ile; i++) wiersze.append(zbudujWiersz(i + 1, zap[i]));
+  blok.append(wiersze);
+
+  const przyciski = document.createElement('p');
+  const zapisz = document.createElement('button');
+  zapisz.className = 'btn';
+  zapisz.textContent = 'Zapisz ćwiczenie';
+  zapisz.onclick = () => zapiszCwiczenie(blok, zapisz);
+  const plus = document.createElement('button');
+  plus.className = 'btn';
+  plus.textContent = 'Dodaj serię';
+  plus.onclick = () => {
+    wiersze.append(zbudujWiersz(wiersze.children.length + 1));
+    blok.dataset.zmienione = '1';
+    status.textContent = 'niezapisane zmiany';
+  };
+  przyciski.append(zapisz, ' ', plus);
+  blok.append(przyciski);
+
+  blok.addEventListener('input', () => {
+    blok.dataset.zmienione = '1';
+    status.textContent = 'niezapisane zmiany';
+  });
+  return blok;
+}
+
+// kolejność: ciężar, potem powtórzenia
+function zbudujWiersz(nr, s) {
+  const p = document.createElement('p');
+  p.className = 'wiersz';
+  p.innerHTML = `Seria ${nr}:
+    <input type="number" class="wKg" step="0.5" min="0" placeholder="Kg" value="${s ? s.kg : ''}"> kg ×
+    <input type="number" class="wPow" min="1" placeholder="Powt." value="${s ? s.powtorzenia : ''}"> powt.`;
+  return p;
+}
+
+function dodajCwiczenieDoTreningu() {
+  if (!aktywnyTrening) return alert('Najpierw zacznij trening');
+  const nazwa = document.getElementById('dodCwNazwa').value.trim();
+  const serie = parseInt(document.getElementById('dodCwSerie').value) || 3;
+  if (!nazwa) return alert('Podaj nazwę ćwiczenia');
+  if (aktywneCw.some(c => c.nazwa.toLowerCase() === nazwa.toLowerCase())) {
+    return alert('To ćwiczenie jest już w treningu');
+  }
+  const c = { nazwa, serie };
+  aktywneCw.push(c);
+  const pusty = document.getElementById('pustyTrening');
+  if (pusty) pusty.remove();
+  document.getElementById('blokiCw').append(zbudujBlok(c));
+  document.getElementById('dodCwNazwa').value = '';
+  document.getElementById('dodCwSerie').value = '';
+}
+
+// zapisuje jedno ćwiczenie: nowe serie zastępują poprzednio zapisane dla tego ćwiczenia
+async function zapiszBlok(blok, cicho) {
+  const cw = blok.dataset.cw;
+  const rekordy = [];
+  blok.querySelectorAll('.wiersz').forEach(w => {
+    const kg = parseFloat(w.querySelector('.wKg').value);
+    const powtorzenia = parseInt(w.querySelector('.wPow').value);
+    if (kg >= 0 && powtorzenia > 0) {   // puste lub błędne wiersze są pomijane
+      rekordy.push({ trening_id: aktywnyTrening.id, cwiczenie: cw, nr_serii: rekordy.length + 1, kg, powtorzenia });
+    }
+  });
+  const stare = (zapisane[cw] || []).map(s => s.id);
+
+  if (rekordy.length === 0) {
+    if (cicho) return false;
+    if (stare.length === 0) { alert('Uzupełnij przynajmniej jedną serię (kg i powtórzenia)'); return false; }
+    if (!confirm('Wszystkie serie są puste. Usunąć zapisane wyniki tego ćwiczenia?')) return false;
+  }
+
+  let nowe = [];
+  if (rekordy.length > 0) {
+    const { data, error } = await db.from('serie').insert(rekordy).select();
+    if (error) { alert('Błąd: ' + error.message); return false; }
+    nowe = data;
+  }
+  if (stare.length > 0) {
+    const { error } = await db.from('serie').delete().in('id', stare);
+    if (error) { alert('Błąd przy zastępowaniu starych wyników: ' + error.message); return false; }
+  }
+
+  zapisane[cw] = nowe.sort((x, y) => x.nr_serii - y.nr_serii);
+  blok.dataset.zmienione = '';
+  blok.querySelector('.cwStatus').textContent = nowe.length ? '✓ zapisane' : '';
+  await aktualizujOsiagi(aktywnyTrening.id, cw, rekordy);
+  return true;
+}
+
+async function zapiszCwiczenie(blok, przycisk) {
+  if (!aktywnyTrening) return;
+  przycisk.disabled = true;
+  const ok = await zapiszBlok(blok, false);
+  przycisk.disabled = false;
+  if (ok) mignij(przycisk);
+}
+
+// zapisuje wszystkie ćwiczenia, w których coś zmieniono
 async function zapiszWyniki() {
   if (!aktywnyTrening) return alert('Najpierw zacznij trening');
-  const rekordy = [];
-  document.querySelectorAll('#formularzSerii .wiersz').forEach(w => {
-    const powtorzenia = parseInt(w.querySelector('.wPow').value);
-    const kg = parseFloat(w.querySelector('.wKg').value);
-    if (powtorzenia > 0 && kg >= 0) {   // puste lub błędne wiersze są pomijane
-      rekordy.push({
-        trening_id: aktywnyTrening.id,
-        cwiczenie: w.dataset.cw,
-        nr_serii: parseInt(w.dataset.nr),
-        powtorzenia,
-        kg
-      });
-    }
-  });
-  if (rekordy.length === 0) return alert('Uzupełnij przynajmniej jedną serię');
+  const bloki = [...document.querySelectorAll('#formularzSerii .cwBlok')]
+    .filter(b => b.dataset.zmienione === '1');
+  let zapisano = 0;
+  for (const b of bloki) {
+    if (await zapiszBlok(b, true)) zapisano++;
+  }
+  alert(zapisano > 0 ? 'Zapisano ćwiczeń: ' + zapisano : 'Brak zmian do zapisania');
+}
 
-  const { error } = await db.from('serie').insert(rekordy);
-  if (error) return alert('Błąd: ' + error.message);
-
-  await opublikujOsiagi(rekordy);
-
-  document.getElementById('trWybor').value = aktywnyTrening.id;
-  document.getElementById('formularzSerii').innerHTML = '';
-  document.getElementById('zapiszWyniki').hidden = true;
-  planCw = [];
+function zamknijTrening() {
+  const niezapisane = document.querySelector('#formularzSerii .cwBlok[data-zmienione="1"]');
+  if (niezapisane && !confirm('Masz niezapisane zmiany w ćwiczeniach. Zamknąć trening mimo to?')) return;
   ustawAktywny(null);
-  wczytajSerie();
-  alert('Wyniki zapisane');
-}
-
-// ===== wolny trening i serie ręczne =====
-async function dodajTrening() {
-  const nazwa = document.getElementById('trNazwa').value.trim();
-  if (!nazwa) return alert('Podaj nazwę treningu');
-  const { data, error } = await db.from('treningi').insert({ nazwa }).select().single();
-  if (error) return alert('Błąd: ' + error.message);
-  document.getElementById('trNazwa').value = '';
-  planCw = [];
+  aktywneCw = [];
+  zapisane = {};
   document.getElementById('formularzSerii').innerHTML = '';
-  document.getElementById('zapiszWyniki').hidden = true;
-  ustawAktywny(data);
-  await wczytajTreningi(data.id);
+  wczytajSerie();
 }
 
+// ===== historia treningów =====
 async function wczytajTreningi(wybierzId) {
   const { data, error } = await db.from('treningi').select('id, nazwa, data')
     .order('data', { ascending: false }).order('id', { ascending: false });
@@ -270,39 +452,66 @@ async function usunTrening() {
   if (!confirm('Usunąć ten trening razem ze wszystkimi seriami?')) return;
   const { error } = await db.from('treningi').delete().eq('id', id);
   if (error) return alert('Błąd: ' + error.message);
+  await db.from('osiagi').delete().eq('trening_id', id);   // osiągi z tego treningu też znikają
   if (aktywnyTrening && String(aktywnyTrening.id) === String(id)) {
     ustawAktywny(null);
+    aktywneCw = [];
+    zapisane = {};
     document.getElementById('formularzSerii').innerHTML = '';
-    document.getElementById('zapiszWyniki').hidden = true;
   }
   wczytajTreningi();
 }
 
-async function dodajSerie() {
-  const trening_id = document.getElementById('trWybor').value;
-  const cwiczenie = document.getElementById('serCw').value.trim();
-  const powtorzenia = parseInt(document.getElementById('serPow').value);
-  const kg = parseFloat(document.getElementById('serKg').value);
-  if (!trening_id || !cwiczenie || !powtorzenia || isNaN(kg)) {
-    return alert('Wybierz trening i uzupełnij ćwiczenie, powtórzenia i kg');
-  }
-  const { error } = await db.from('serie').insert({ trening_id, cwiczenie, powtorzenia, kg });
+async function usunCwiczenieZTreningu(trening_id, cwiczenie) {
+  if (!confirm('Usunąć ćwiczenie „' + cwiczenie + '” z tego treningu?')) return;
+  const { error } = await db.from('serie').delete().eq('trening_id', trening_id).eq('cwiczenie', cwiczenie);
   if (error) return alert('Błąd: ' + error.message);
-  document.getElementById('serPow').value = '';
+  await db.from('osiagi').delete().eq('trening_id', trening_id).eq('cwiczenie', cwiczenie);
   wczytajSerie();
 }
 
+// wyniki wybranego treningu: każde ćwiczenie jeden raz, a pod nim wszystkie serie w jednej linii
 async function wczytajSerie() {
   const id = document.getElementById('trWybor').value;
   const ul = document.getElementById('listaSerii');
   ul.innerHTML = '';
   if (!id) return;
+
+  const komunikat = tekst => {
+    const li = document.createElement('li');
+    li.textContent = tekst;
+    ul.appendChild(li);
+  };
+
+  if (aktywnyTrening && String(aktywnyTrening.id) === String(id)) {
+    komunikat('Ten trening jest otwarty wyżej, tam widzisz i poprawiasz wyniki.');
+    return;
+  }
+
   const { data, error } = await db.from('serie').select('*').eq('trening_id', id).order('id');
   if (error) return alert('Błąd: ' + error.message);
-  data.forEach(s => {
+  if (data.length === 0) { komunikat('Ten trening nie ma jeszcze zapisanych wyników.'); return; }
+
+  const grupy = {};
+  data.forEach(s => { (grupy[s.cwiczenie] = grupy[s.cwiczenie] || []).push(s); });
+
+  Object.keys(grupy).forEach(nazwa => {
+    const serie = grupy[nazwa].sort((x, y) => (x.nr_serii ?? x.id) - (y.nr_serii ?? y.id));
     const li = document.createElement('li');
-    li.textContent = `${s.cwiczenie}${s.nr_serii ? ' – seria ' + s.nr_serii : ''}: ${s.powtorzenia} × ${s.kg} kg `;
-    li.appendChild(usunBtn('serie', s.id, wczytajSerie));
+    li.className = 'cwWynik';
+
+    const b = document.createElement('b');
+    b.textContent = nazwa + ' ';
+    const usun = document.createElement('button');
+    usun.className = 'btn-usun';
+    usun.textContent = 'Usuń ćwiczenie';
+    usun.onclick = () => usunCwiczenieZTreningu(id, nazwa);
+
+    const opis = document.createElement('div');
+    opis.className = 'cwSerie';
+    opis.textContent = serie.map(s => `${s.kg} kg × ${s.powtorzenia}`).join('  ·  ');
+
+    li.append(b, usun, opis);
     ul.appendChild(li);
   });
 }
@@ -419,18 +628,10 @@ let zgodaNazwa = '';       // nazwa, pod jaką pokazują się jego osiągi
 
 function zaokr(x) { return Math.round(x * 10) / 10; }
 
-// buduje zakładkę "Nowe osiągi" (przycisk w menu + panel), index.html zostaje bez zmian
+// buduje panel zakładki "Nowe osiągi" (przycisk wejścia jest w menu bocznym, w index.html)
 function zbudujOsiagiUI() {
-  const menu = document.getElementById('trMenu');
   const trening = document.getElementById('trening');
-  if (!menu || !trening || document.getElementById('trOsiagi')) return;
-
-  const przycisk = document.createElement('button');
-  przycisk.className = 'btn';
-  przycisk.id = 'trOsiagiBtn';
-  przycisk.textContent = 'Nowe osiągi';
-  przycisk.onclick = () => pokazTr('trOsiagi');
-  menu.append(' ', przycisk);
+  if (!trening || document.getElementById('trOsiagi')) return;
 
   const div = document.createElement('div');
   div.id = 'trOsiagi';
@@ -518,56 +719,69 @@ async function wczytajOsiagi() {
   });
 }
 
-// po zapisaniu wyników: jeśli jest zgoda i padł nowy rekord, publikujemy osiąg
-async function opublikujOsiagi(rekordy) {
+// po zapisaniu ćwiczenia: jeśli jest zgoda, odświeża osiąg tego ćwiczenia w tym treningu
+async function aktualizujOsiagi(trening_id, cwiczenie, rekordy) {
   if (!zgodaOsiagi || !zgodaNazwa) return;
   try {
-    // najlepszy wynik z tego treningu dla każdego ćwiczenia
-    const teraz = {};
-    rekordy.forEach(r => {
-      if (!(r.kg > 0)) return;
-      const e = e1rm(r.kg, r.powtorzenia);
-      if (!teraz[r.cwiczenie] || e > teraz[r.cwiczenie]) teraz[r.cwiczenie] = e;
-    });
-    const nazwy = Object.keys(teraz);
-    if (nazwy.length === 0) return;
+    // dotychczasowy osiąg z tego treningu zastępujemy nowym (albo znika, jeśli progresu już nie ma)
+    await db.from('osiagi').delete().eq('trening_id', trening_id).eq('cwiczenie', cwiczenie);
 
-    // dotychczasowe rekordy z poprzednich treningów
+    let najlepszy = 0;
+    rekordy.forEach(r => {
+      if (r.kg > 0) najlepszy = Math.max(najlepszy, e1rm(r.kg, r.powtorzenia));
+    });
+    if (najlepszy === 0) return;
+
+    // dotychczasowy rekord z innych treningów
     const { data, error } = await db.from('serie')
-      .select('cwiczenie, powtorzenia, kg')
-      .in('cwiczenie', nazwy)
-      .neq('trening_id', rekordy[0].trening_id)
+      .select('powtorzenia, kg')
+      .eq('cwiczenie', cwiczenie)
+      .neq('trening_id', trening_id)
       .gt('kg', 0);
     if (error) throw error;
 
-    const poprzednio = {};
-    data.forEach(s => {
-      const e = e1rm(s.kg, s.powtorzenia);
-      if (!poprzednio[s.cwiczenie] || e > poprzednio[s.cwiczenie]) poprzednio[s.cwiczenie] = e;
-    });
+    let poprzedni = 0;
+    data.forEach(s => { poprzedni = Math.max(poprzedni, e1rm(s.kg, s.powtorzenia)); });
+    if (poprzedni === 0 || najlepszy <= poprzedni) return;   // brak historii albo brak progresu
 
-    const wpisy = [];
-    nazwy.forEach(cw => {
-      const prev = poprzednio[cw];
-      if (!prev || teraz[cw] <= prev) return;   // brak historii albo brak progresu
-      wpisy.push({
-        nazwa: zgodaNazwa,
-        cwiczenie: cw,
-        poprzedni: zaokr(prev),
-        nowy: zaokr(teraz[cw]),
-        procent: zaokr((teraz[cw] - prev) / prev * 100)
-      });
+    const { error: e2 } = await db.from('osiagi').insert({
+      nazwa: zgodaNazwa,
+      trening_id,
+      cwiczenie,
+      poprzedni: zaokr(poprzedni),
+      nowy: zaokr(najlepszy),
+      procent: zaokr((najlepszy - poprzedni) / poprzedni * 100)
     });
-    if (wpisy.length > 0) {
-      const { error: e2 } = await db.from('osiagi').insert(wpisy);
-      if (e2) throw e2;
-    }
+    if (e2) throw e2;
   } catch (e) {
-    console.warn('Nie udało się opublikować osiągów:', e);   // zapis treningu i tak się udał
+    console.warn('Nie udało się zaktualizować osiągów:', e);   // zapis ćwiczenia i tak się udał
   }
 }
 
 zbudujOsiagiUI();
+
+// ===== dopasowanie układu z index.html (sam HTML zostaje bez zmian) =====
+(function () {
+  // przycisk powrotu do treningu obok listy historii
+  const wybor = document.getElementById('trWybor');
+  if (wybor && !document.getElementById('edytujTrening')) {
+    const b = document.createElement('button');
+    b.id = 'edytujTrening';
+    b.className = 'btn';
+    b.textContent = 'Kontynuuj / edytuj trening';
+    b.onclick = edytujWybranyTrening;
+    wybor.after(' ', b);
+  }
+  // stary wiersz ręcznego dodawania serii jest zbędny: ćwiczenia poprawia się w otwartym treningu
+  const serCw = document.getElementById('serCw');
+  if (serCw && serCw.closest('p')) serCw.closest('p').hidden = true;
+  // nowe nazwy
+  const zapisz = document.getElementById('zapiszWyniki');
+  if (zapisz) zapisz.textContent = 'Zapisz wszystkie ćwiczenia';
+  document.querySelectorAll('#trSesja h3').forEach(h => {
+    if (h.textContent.trim() === 'Historia i wolne serie') h.textContent = 'Historia treningów';
+  });
+})();
 
 // przycisk "Usuń trening" jest w index.html, klasa dodawana tutaj
 document.querySelectorAll('button[onclick="usunTrening()"]').forEach(b => b.classList.add('btn-usun'));
