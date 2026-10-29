@@ -56,6 +56,10 @@ input.eSerie, input.nSerie {
     width: 5vh;
 }
 
+input.eNazwa {
+    width: 15vw;
+}
+
 .btn-usun {
     background-color: #423B49;
     border: 1px solid black;
