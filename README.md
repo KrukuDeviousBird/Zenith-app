@@ -1,9 +1,12 @@
-[README.md](https://github.com/user-attachments/files/34125605/README.md)
 # Zenith
 
 Osobista aplikacja webowa „wszystko w jednym": **zadania**, **notatki**, **trening** (plany, wyniki, statystyki progresu) i **sejf na hasła**. Napisana w czystym HTML, CSS i JavaScript, bez frameworków i bez kroku budowania. Dane trzyma w Supabase, a stronę można hostować za darmo na GitHub Pages.
 
 ## Funkcje
+
+### Logowanie
+- osobna strona logowania (`index.html`), konto zakładane z nazwą użytkownika i hasłem (Supabase Auth),
+- aplikacja (`app.html`) jest dostępna tylko po zalogowaniu.
 
 ### Zadania
 - zadania z terminem i opisem, oznaczanie jako zrobione,
@@ -47,30 +50,41 @@ Osobista aplikacja webowa „wszystko w jednym": **zadania**, **notatki**, **tre
 ## Struktura projektu
 
 ```
-.
-├── index.html        # cała struktura strony
-├── style.css         # wygląd aplikacji
-├── menu.css          # mechanika wysuwanego menu bocznego
-├── trening.css       # układ listy wyników w historii treningów
-└── js/
-    ├── baza.js       # połączenie z Supabase (URL i klucz publiczny), funkcje wspólne
-    ├── app.js        # logowanie, wylogowanie, przełączanie sekcji (pokaz)
-    ├── zadania.js    # zadania, podzadania, komentarze, użytkownicy w zadaniu
-    ├── notatki.js    # notatki
-    ├── trening.js    # plany, treningi, statystyki, osiągi
-    ├── hasla.js      # sejf: szyfrowanie i karty z hasłami
-    └── menu.js       # menu boczne
+zenith/
+├── README.md
+└── web/
+    ├── index.html        # strona logowania
+    ├── app.html          # aplikacja (dostępna po zalogowaniu): zadania, notatki, trening, hasła
+    ├── css/
+    │   ├── style.css     # wygląd ogólny aplikacji
+    │   ├── login.css     # wygląd strony logowania
+    │   ├── menu.css      # menu boczne wysuwane z lewej
+    │   ├── zadania.css   # sekcja Zadania
+    │   ├── notatki.css   # sekcja Notatki
+    │   ├── trening.css   # sekcja Trening
+    │   └── hasla.css     # sekcja Hasła
+    ├── img/
+    │   └── paper.png     # grafika tła
+    └── js/
+        ├── baza.js       # połączenie z Supabase (URL i klucz publiczny), funkcje wspólne
+        ├── auth.js       # logowanie
+        ├── app.js        # sprawdzenie sesji, wylogowanie, przełączanie sekcji (pokaz)
+        ├── menu.js       # menu boczne
+        ├── zadania.js    # zadania, podzadania, komentarze, użytkownicy w zadaniu
+        ├── notatki.js    # notatki
+        ├── trening.js    # plany, treningi, statystyki, osiągi
+        └── hasla.js      # sejf: szyfrowanie i karty z hasłami
 ```
 
-Kolejność skryptów w `index.html` ma znaczenie: biblioteki (Supabase, Chart.js), potem `baza.js`, moduły sekcji i na końcu `app.js`.
+Kolejność skryptów w `app.html` ma znaczenie: najpierw biblioteki (Supabase, Chart.js), potem `baza.js`, moduły sekcji, a na końcu `app.js`.
 
 ## Uruchomienie
 
 1. **Utwórz projekt w Supabase** (darmowy plan wystarczy).
 2. **Utwórz tabele** w SQL Editor (patrz sekcja „Baza danych") i włącz Row Level Security na każdej z nich.
-3. **Wpisz dane projektu** w `js/baza.js`: adres projektu (Project URL) i klucz publiczny (`anon` / publishable key).
-4. **Otwórz `index.html`** lokalnie (najlepiej przez prosty serwer, np. rozszerzenie Live Server w VS Code albo `python -m http.server`). Szyfrowanie haseł wymaga bezpiecznego kontekstu, więc działa na `localhost` i na HTTPS, ale nie z adresu `file://` w niektórych przeglądarkach.
-5. **Wdróż na GitHub Pages**: *Settings → Pages → Deploy from a branch → `main` / root*.
+3. **Wpisz dane projektu** w `web/js/baza.js`: adres projektu (Project URL) i klucz publiczny (`anon` / publishable key).
+4. **Otwórz `web/index.html`** (strona logowania) lokalnie (najlepiej przez prosty serwer, np. rozszerzenie Live Server w VS Code albo `python -m http.server`). Szyfrowanie haseł wymaga bezpiecznego kontekstu, więc działa na `localhost` i na HTTPS, ale nie z adresu `file://` w niektórych przeglądarkach.
+5. **Wdróż na GitHub Pages**: *Settings → Pages → Deploy from a branch → `main` / root*. Ponieważ strona leży w folderze `web/`, będzie dostępna pod adresem `https://<użytkownik>.github.io/<repozytorium>/web/`.
 
 ## Baza danych
 
@@ -171,7 +185,7 @@ create policy "osiagi_usun" on osiagi for delete to authenticated using (user_id
 
 ## Bezpieczeństwo
 
-- Klucz publiczny (`anon`) w `js/baza.js` jest przeznaczony do użycia w przeglądarce. Ochronę danych zapewnia **Row Level Security** w bazie, więc upewnij się, że jest włączone na każdej tabeli.
+- Klucz publiczny (`anon`) w `web/js/baza.js` jest przeznaczony do użycia w przeglądarce. Ochronę danych zapewnia **Row Level Security** w bazie, więc upewnij się, że jest włączone na każdej tabeli.
 - **Nigdy nie umieszczaj w repozytorium klucza `service_role`** ani innych kluczy prywatnych.
 - Hasła w sejfie są szyfrowane po stronie klienta, a hasło główne istnieje tylko w pamięci otwartej karty przeglądarki.
 - Osiągi innych użytkowników są widoczne tylko dla tych, którzy wyrazili na to zgodę, i tylko w zakresie: nazwa użytkownika, ćwiczenie, szacowane maksimum i procent progresu.
