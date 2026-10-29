@@ -1,0 +1,21 @@
+/* PASS VAULT */
+
+#hasla {
+    background-color: #080A0F;
+    padding: 8px;
+    color: #E5E7EB;
+}
+
+#hasla input {
+    background-color: #423B49;
+    border: 1px solid #A7A7E1;
+    border-radius: 3px;
+    color: #E5E7EB;
+        height: 3vh;
+}
+
+#hasla span {
+    background-color: #423B49;
+
+    color: #E5E7EB;
+}

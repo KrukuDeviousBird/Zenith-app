@@ -1,0 +1,41 @@
+* {
+    background-color: #080A0F;
+}
+
+body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+#log {
+
+    border: 1px solid #A7A7E1;
+    border-radius: 5px;
+    width: 20%;
+    margin: 0 auto;
+    color: #E5E7EB;
+}
+
+input {
+    width: 60%;
+    height: 25px;
+    border: 2px dashed #A7A7E1;
+}
+
+input:hover {
+    border: 2px solid #A7A7E1;
+}
+
+button {
+    color: #A7A7E1;
+    border: 2px inset #A7A7E1;
+    transition: 0.4;
+}
+
+button:hover {
+    color: #A7A7E1;
+
+    border: 2px outset #A7A7E1;
+}

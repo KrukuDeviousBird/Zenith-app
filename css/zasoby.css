@@ -1,0 +1,53 @@
+/* Database resources: segmentowe paski zasobów.
+   Tylko podstawowy układ i kolory pasków; resztę wyglądu ustawiasz w swoich stylach. */
+
+#zasoby {
+  max-width: 520px;
+}
+
+.zasob {
+  margin-bottom: 18px;
+}
+
+.zasob-gora {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.zasob-proc {
+  font-variant-numeric: tabular-nums;
+  color: var(--zasob-kolor);
+}
+
+/* pasek z kresek: liczbę kresek ustawia JS (SEGMENTY w zasoby.js) */
+.zasob-pasek {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 2px;
+  height: 10px;
+}
+
+.zasob-seg {
+  background: rgba(128, 128, 128, 0.25);
+  border-radius: 1px;
+}
+
+.zasob-seg.on {
+  background: var(--zasob-kolor);
+}
+
+.zasob-opis {
+  margin-top: 4px;
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+
+/* kolory zależne od poziomu zużycia */
+.zasob[data-poziom="ok"]          { --zasob-kolor: #4caf50; }
+.zasob[data-poziom="ostrzezenie"] { --zasob-kolor: #ffa726; }
+.zasob[data-poziom="krytyczny"]   { --zasob-kolor: #ef4444; }
+.zasob[data-poziom="brak"]        { --zasob-kolor: currentColor; opacity: 0.6; }

@@ -1,0 +1,150 @@
+/* TRENING */
+
+/* TRENING NAVBAR */
+#trNav {
+    background-color: #080A0F;
+    padding: 8px;
+    color: #E5E7EB;
+    border-bottom: 4px solid #A7A7E1;
+    margin: 0;
+}
+
+#trNav h2 {
+    margin: 8px;
+}
+
+#trMenu {
+    float: right;
+}
+
+#trNav button {
+    background-color: #423B49;
+    border: 1px solid black;
+    border-radius: 5px;
+    height: 4vh;
+    width: 12vh;
+    color: #E5E7EB;
+    transition: 0.4s;
+}
+
+#trNav button:hover {
+    background-color: #A7A7E1;
+    color: black;
+}
+
+/* PLANY */
+
+#trPlany {
+    background-color: #080A0F;
+    padding: 8px;
+    color: #E5E7EB;
+}
+
+#trPlany input {
+    background-color: #423B49;
+    border: 1px solid #A7A7E1;
+    border-radius: 3px;
+    color: #E5E7EB;
+    height: 3vh;
+}
+
+#trPlany h3 {
+    margin-top: 9px;
+}
+
+input.eSerie, input.nSerie {
+    width: 5vh;
+}
+
+.btn-usun {
+    background-color: #423B49;
+    border: 1px solid black;
+    border-radius: 5px;
+    height: 4vh;
+    color: white;
+    transition: 0.4s;
+}
+
+.btn {
+    background-color: #423B49;
+    border: 1px solid black;
+    border-radius: 5px;
+    height: 4vh;
+    color: white;
+    transition: 0.4s;
+}
+
+.btn:hover {
+    background-color: #A7A7E1;
+    color: black;
+}
+
+.btn-usun:hover {
+    background-color: red;
+    color: black;
+}
+
+/* TRENING SESJA */
+#trSesja {
+    background-color: #080A0F;
+    padding: 8px;
+    color: #E5E7EB;
+}
+
+#trSesja input {
+    background-color: #423B49;
+    border: 1px solid #A7A7E1;
+    border-radius: 3px;
+    color: #E5E7EB;
+    height: 4vh;
+}
+
+input.wPow, input.wKg {
+    width: 5vh;
+}
+
+#trSesja select {
+    background-color: #423B49;
+    border: 1px solid #A7A7E1;
+    border-radius: 3px;
+    color: #E5E7EB;
+    height: 4vh;
+}
+
+li.cwWynik {
+    border: 1px solid #A7A7E1;
+    border-radius: 3px;
+    padding: 5px;
+    margin: 5px;
+}
+
+/* TRENING STATYSTYKI */
+#trStaty {
+    background-color: #080A0F;
+    padding: 8px;
+    color: #E5E7EB;
+}
+
+#trStaty select {
+    background-color: #423B49;
+    border: 1px solid #A7A7E1;
+    border-radius: 3px;
+    color: #E5E7EB;
+    height: 3vh;
+}
+
+#wykresCwBox,
+#wykresWszystkieBox {
+    background-color: #E5E7EB;
+    border: 1px solid #A7A7E1;
+    border-radius: 3px;
+    padding: 8px;
+}
+
+/* OSIąGI */
+
+#trOsiagi {
+    background-color: #080A0F;
+    padding: 8px;
+    color: #E5E7EB;
+}
