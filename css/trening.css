@@ -118,6 +118,10 @@ li.cwWynik {
     margin: 5px;
 }
 
+ul#listaSerii {
+    padding-left: 15px;
+}
+
 /* TRENING STATYSTYKI */
 #trStaty {
     background-color: #080A0F;
