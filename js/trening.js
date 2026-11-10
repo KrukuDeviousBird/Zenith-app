@@ -297,6 +297,44 @@ function zbudujFormularz() {
   box.append(dod);
 }
 
+// ===== lista ćwiczeń: zwinięty wiersz z kropkami postępu, po kliknięciu rozwijają się serie =====
+// 1 seria, 2 serie, 5 serii, 12 serii, 22 serie
+function liczbaSerii(n) {
+  if (n === 1) return '1 seria';
+  const k = n % 10;
+  const s = n % 100;
+  return n + ((k >= 2 && k <= 4 && !(s >= 12 && s <= 14)) ? ' serie' : ' serii');
+}
+
+// kropki postępu: pełne = zapisane serie, puste = jeszcze nie zapisane
+function kropki(zapisanych, wszystkich) {
+  const box = document.createElement('span');
+  box.className = 'cwKropki';
+  for (let i = 0; i < wszystkich; i++) {
+    const k = document.createElement('span');
+    k.className = 'kropka' + (i < zapisanych ? ' zapisana' : '');
+    box.append(k);
+  }
+  return box;
+}
+
+// rozwija lub zwija ćwiczenie (blok w treningu albo pozycję w historii)
+function przelaczCw(kont, rozwin) {
+  const szczegoly = kont.querySelector('.cwSzczegoly');
+  const otwarty = rozwin === undefined ? szczegoly.hidden : rozwin;
+  szczegoly.hidden = !otwarty;
+  kont.querySelector('.cwNaglowek').setAttribute('aria-expanded', otwarty ? 'true' : 'false');
+  kont.querySelector('.cwStrzalka').textContent = otwarty ? '\u25BE' : '\u25B8';
+}
+
+// przelicza kropki i licznik (zapisane serie / wszystkie wiersze) w bloku ćwiczenia
+function odswiezPostep(blok) {
+  const zap = (zapisane[blok.dataset.cw] || []).length;
+  const wszystkich = Math.max(blok.querySelectorAll('.wiersz').length, zap);
+  blok.querySelector('.cwKropki').replaceWith(kropki(zap, wszystkich));
+  blok.querySelector('.cwLicznik').textContent = zap + '/' + wszystkich;
+}
+
 // jeden blok = jedno ćwiczenie ze swoimi seriami i własnym przyciskiem zapisu
 function zbudujBlok(c) {
   const zap = zapisane[c.nazwa] || [];
@@ -304,21 +342,39 @@ function zbudujBlok(c) {
   blok.className = 'cwBlok';
   blok.dataset.cw = c.nazwa;
 
-  const h = document.createElement('h4');
-  h.textContent = c.nazwa + ' ';
+  // zwinięty wiersz: strzałka, nazwa, status i postęp (kropki + licznik)
+  const naglowek = document.createElement('button');
+  naglowek.className = 'btn cwNaglowek';
+  naglowek.setAttribute('aria-expanded', 'false');
+  const strzalka = document.createElement('span');
+  strzalka.className = 'cwStrzalka';
+  strzalka.textContent = '\u25B8';
+  const nazwa = document.createElement('span');
+  nazwa.className = 'cwNazwa';
+  nazwa.textContent = c.nazwa;
   const status = document.createElement('span');
   status.className = 'cwStatus';
   status.textContent = zap.length ? '✓ zapisane' : '';
-  h.append(status);
-  blok.append(h);
+  const postep = document.createElement('span');
+  postep.className = 'cwPostep';
+  const licznik = document.createElement('span');
+  licznik.className = 'cwLicznik';
+  postep.append(kropki(0, 0), licznik);
+  naglowek.append(strzalka, nazwa, status, postep);
+  naglowek.onclick = () => przelaczCw(blok);
+
+  // rozwijana część: serie i przyciski
+  const szczegoly = document.createElement('div');
+  szczegoly.className = 'cwSzczegoly';
+  szczegoly.hidden = true;
 
   const wiersze = document.createElement('div');
   wiersze.className = 'cwWiersze';
   const ile = Math.max(c.serie || 1, zap.length, 1);
   for (let i = 0; i < ile; i++) wiersze.append(zbudujWiersz(i + 1, zap[i]));
-  blok.append(wiersze);
 
   const przyciski = document.createElement('p');
+  przyciski.className = 'cwPrzyciski';
   const zapisz = document.createElement('button');
   zapisz.className = 'btn';
   zapisz.textContent = 'Zapisz ćwiczenie';
@@ -330,14 +386,19 @@ function zbudujBlok(c) {
     wiersze.append(zbudujWiersz(wiersze.children.length + 1));
     blok.dataset.zmienione = '1';
     status.textContent = 'niezapisane zmiany';
+    odswiezPostep(blok);
   };
   przyciski.append(zapisz, ' ', plus);
-  blok.append(przyciski);
+
+  szczegoly.append(wiersze, przyciski);
+  blok.append(naglowek, szczegoly);
 
   blok.addEventListener('input', () => {
     blok.dataset.zmienione = '1';
     status.textContent = 'niezapisane zmiany';
   });
+
+  odswiezPostep(blok);
   return blok;
 }
 
@@ -363,7 +424,9 @@ function dodajCwiczenieDoTreningu() {
   aktywneCw.push(c);
   const pusty = document.getElementById('pustyTrening');
   if (pusty) pusty.remove();
-  document.getElementById('blokiCw').append(zbudujBlok(c));
+  const blok = zbudujBlok(c);
+  document.getElementById('blokiCw').append(blok);
+  przelaczCw(blok, true);   // nowe ćwiczenie od razu rozwinięte
   document.getElementById('dodCwNazwa').value = '';
   document.getElementById('dodCwSerie').value = '';
 }
@@ -401,6 +464,7 @@ async function zapiszBlok(blok, cicho) {
   zapisane[cw] = nowe.sort((x, y) => x.nr_serii - y.nr_serii);
   blok.dataset.zmienione = '';
   blok.querySelector('.cwStatus').textContent = nowe.length ? '✓ zapisane' : '';
+  odswiezPostep(blok);
   await aktualizujOsiagi(aktywnyTrening.id, cw, rekordy);
   return true;
 }
@@ -500,18 +564,45 @@ async function wczytajSerie() {
     const li = document.createElement('li');
     li.className = 'cwWynik';
 
-    const b = document.createElement('b');
-    b.textContent = nazwa + ' ';
+    // zwinięty wiersz: strzałka, nazwa, kropki (wszystkie zapisane) i liczba serii
+    const naglowek = document.createElement('button');
+    naglowek.className = 'btn cwNaglowek';
+    naglowek.setAttribute('aria-expanded', 'false');
+    const strzalka = document.createElement('span');
+    strzalka.className = 'cwStrzalka';
+    strzalka.textContent = '\u25B8';
+    const nazwaEl = document.createElement('span');
+    nazwaEl.className = 'cwNazwa';
+    nazwaEl.textContent = nazwa;
+    const postep = document.createElement('span');
+    postep.className = 'cwPostep';
+    const licznik = document.createElement('span');
+    licznik.className = 'cwLicznik';
+    licznik.textContent = liczbaSerii(serie.length);
+    postep.append(kropki(serie.length, serie.length), licznik);
+    naglowek.append(strzalka, nazwaEl, postep);
+    naglowek.onclick = () => przelaczCw(li);
+
+    // rozwijana część: serie i przycisk Usuń na końcu
+    const szczegoly = document.createElement('div');
+    szczegoly.className = 'cwSzczegoly';
+    szczegoly.hidden = true;
+    serie.forEach((s, i) => {
+      const w = document.createElement('div');
+      w.className = 'cwSeriaWiersz';
+      w.textContent = `Seria ${i + 1}: ${s.kg}kg × ${s.powtorzenia}`;
+      szczegoly.append(w);
+    });
+    const akcje = document.createElement('div');
+    akcje.className = 'cwAkcje';
     const usun = document.createElement('button');
     usun.className = 'btn-usun';
     usun.textContent = 'Usuń ćwiczenie';
     usun.onclick = () => usunCwiczenieZTreningu(id, nazwa);
+    akcje.append(usun);
+    szczegoly.append(akcje);
 
-    const opis = document.createElement('div');
-    opis.className = 'cwSerie';
-    opis.textContent = serie.map(s => `${s.kg} kg × ${s.powtorzenia}`).join('  ·  ');
-
-    li.append(b, usun, opis);
+    li.append(naglowek, szczegoly);
     ul.appendChild(li);
   });
 }
