@@ -254,12 +254,154 @@ ul#listaSerii {
     transition: 0.4s;
 }
 
-.btn:hover,
-.btn:hover .cwStrzalka,
-.btn:hover .cwKropki,
-.btn:hover .cwLicznik,
-.btn:hover .cwPostep,
-.btn:hover .cwNazwa {
-  background-color: #A7A7E1;
-  color: black;
+/* Lista ćwiczeń w Treningu (aktywny trening i historia):
+   zwinięty wiersz z nazwą i kropkami postępu, po kliknięciu rozwijają się serie.
+   Tylko układ; wygląd (kolory, czcionki) ustawiasz w style.css, który ładuje się po tym pliku. */
+
+.cwBlok,
+.cwWynik {
+  list-style: none;
+  margin-bottom: 8px;
+}
+
+/* wiersz ćwiczenia (przycisk): strzałka i nazwa po lewej, postęp po prawej */
+.cwNaglowek {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+}
+
+.cwNazwa {
+  font-weight: 600;
+}
+
+.cwStatus {
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+
+.cwPostep {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cwLicznik {
+  font-size: 0.85em;
+  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
+}
+
+/* kropki: pełne = zapisane serie, puste = jeszcze niezapisane */
+.cwKropki {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.kropka {
+  box-sizing: border-box;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  opacity: 0.5;
+}
+
+.kropka.zapisana {
+  background: #4caf50;
+  border-color: #4caf50;
+  opacity: 1;
+}
+
+/* rozwijana część z seriami */
+.cwSzczegoly {
+  padding: 8px 8px 8px 28px;
+}
+
+.cwSzczegoly[hidden] {
+  display: none;
+}
+
+.cwSeriaWiersz {
+  padding: 2px 0;
+}
+
+/* przycisk Usuń ćwiczenie na końcu (po prawej) */
+.cwAkcje {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ===== Plany: zwinięty wiersz planu, po kliknięciu rozwija się lista ćwiczeń ===== */
+
+.plan {
+  margin-bottom: 8px;
+}
+
+/* wiersz planu: strzałka, nazwa i liczba ćwiczeń po lewej, przyciski po prawej */
+.planWiersz {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.planNazwa {
+  font-weight: 600;
+}
+
+.planLicznik {
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+
+.planAkcje {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* rozwinięta część */
+.planSzczegoly {
+  padding: 8px 8px 8px 28px;
+}
+
+.planSzczegoly[hidden] {
+  display: none;
+}
+
+/* odczyt: numer, nazwa ćwiczenia, serie po prawej */
+.planCw {
+  display: flex;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.planNr {
+  min-width: 1.6em;
+  opacity: 0.7;
+}
+
+.planCwSerie {
+  margin-left: auto;
+  opacity: 0.8;
+}
+
+.planRazem {
+  margin-top: 8px;
+  font-size: 0.9em;
+  opacity: 0.7;
+}
+
+.planPusty {
+  opacity: 0.7;
 }
