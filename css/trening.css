@@ -254,3 +254,13 @@ ul#listaSerii {
     background-color: #423B49;
     transition: 0.4s;
 }
+
+.btn:hover,
+.btn:hover .cwStrzalka,
+.btn:hover .cwKropki,
+.btn:hover .cwLicznik,
+.btn:hover .cwPostep,
+.btn:hover .cwNazwa {
+  background-color: #A7A7E1;
+  color: black;
+}
