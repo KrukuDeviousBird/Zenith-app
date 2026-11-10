@@ -57,7 +57,7 @@ input.eSerie, input.nSerie {
 }
 
 input.eNazwa {
-    width: 15vw;
+    width: 12vw;
 }
 
 .btn-usun {
@@ -78,9 +78,14 @@ input.eNazwa {
     transition: 0.4s;
 }
 
-.btn:hover {
-    background-color: #A7A7E1;
-    color: black;
+.btn:hover,
+.btn:hover .cwStrzalka,
+.btn:hover .cwKropki,
+.btn:hover .cwLicznik,
+.btn:hover .cwPostep,
+.btn:hover .cwNazwa {
+  background-color: #A7A7E1;
+  color: black;
 }
 
 .btn-usun:hover {
@@ -120,7 +125,7 @@ input.wPow, input.wKg {
 }
 
 li.cwWynik {
-    border: 1px solid #A7A7E1;
+    /*border: 1px solid #A7A7E1;*/
     border-radius: 3px;
     padding: 5px;
     margin: 5px;
@@ -159,4 +164,93 @@ ul#listaSerii {
     background-color: #080A0F;
     padding: 8px;
     color: #E5E7EB;
+}
+
+/* Lista ćwiczeń w Treningu (aktywny trening i historia):
+   zwinięty wiersz z nazwą i kropkami postępu, po kliknięciu rozwijają się serie.
+   Tylko układ; wygląd (kolory, czcionki) ustawiasz w style.css, który ładuje się po tym pliku. */
+
+.cwBlok,
+.cwWynik {
+  list-style: none;
+  margin-bottom: 8px;
+}
+
+/* wiersz ćwiczenia (przycisk): strzałka i nazwa po lewej, postęp po prawej */
+.cwNaglowek {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+}
+
+.cwNazwa {
+  font-weight: 600;
+  background-color: #423B49;
+}
+
+.cwStatus {
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+
+.cwPostep {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cwLicznik {
+  font-size: 0.85em;
+  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
+}
+
+/* kropki: pełne = zapisane serie, puste = jeszcze niezapisane */
+.cwKropki {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.kropka {
+  box-sizing: border-box;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  opacity: 0.5;
+}
+
+.kropka.zapisana {
+  background: #45FD3E;
+  border-color: #45FD3E;
+  opacity: 1;
+}
+
+/* rozwijana część z seriami */
+.cwSzczegoly {
+  padding: 8px 8px 8px 28px;
+}
+
+.cwSzczegoly[hidden] {
+  display: none;
+}
+
+.cwSeriaWiersz {
+  padding: 2px 0;
+}
+
+/* przycisk Usuń ćwiczenie na końcu (po prawej) */
+.cwAkcje {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.cwStrzalka, .cwKropki, .cwLicznik, .cwPostep, .cwNazwa {
+    background-color: #423B49;
+    transition: 0.4s;
 }
