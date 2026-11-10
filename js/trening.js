@@ -34,17 +34,34 @@ function pokazTr(id) {
 }
 
 // ===== PLANY =====
+// Plany są zwinięte, kliknięcie rozwija listę ćwiczeń (tylko do odczytu).
+// "Edytuj" przełącza plan w tryb edycji, "Zacznij trening" otwiera trening z tego planu.
+let planyStan = {};   // { idPlanu: { otwarty, edycja } }, pamiętane przy każdym odświeżeniu listy
+
+// 1 ćwiczenie, 2 ćwiczenia, 5 ćwiczeń, 12 ćwiczeń, 22 ćwiczenia
+function liczbaCwiczen(n) {
+  if (n === 1) return '1 ćwiczenie';
+  const k = n % 10;
+  const s = n % 100;
+  return n + ((k >= 2 && k <= 4 && !(s >= 12 && s <= 14)) ? ' ćwiczenia' : ' ćwiczeń');
+}
+
 async function wczytajPlany() {
   const { data, error } = await db.from('plany')
     .select('id, nazwa, plan_cwiczenia(id, nazwa, serie)')
     .order('nazwa');
   if (error) return alert('Błąd: ' + error.message);
 
-  // lista planów w zakładce Trening (start treningu z planu)
+  // lista planów w zakładce Treningi (start treningu z planu)
   document.getElementById('sesjaPlan').innerHTML =
     data.map(p => `<option value="${p.id}">${trEsc(p.nazwa)}</option>`).join('');
 
-  // lista planów z ćwiczeniami w zakładce Plany
+  // usuwamy zapamiętany stan planów, których już nie ma
+  Object.keys(planyStan).forEach(id => {
+    if (!data.some(p => String(p.id) === id)) delete planyStan[id];
+  });
+
+  // lista planów w zakładce Plany
   const box = document.getElementById('listaPlanow');
   box.innerHTML = '';
   if (data.length === 0) {
@@ -54,59 +71,161 @@ async function wczytajPlany() {
   data.forEach(p => box.appendChild(zbudujPlan(p)));
 }
 
+// rozwija lub zwija plan (bez przebudowy listy)
+function ustawOtwarcie(div, otwarty) {
+  div.querySelector('.planSzczegoly').hidden = !otwarty;
+  div.querySelector('.planWiersz').setAttribute('aria-expanded', otwarty ? 'true' : 'false');
+  div.querySelector('.planStrzalka').textContent = otwarty ? '\u25BE' : '\u25B8';
+}
+
 function zbudujPlan(p) {
+  const stan = planyStan[p.id] || (planyStan[p.id] = { otwarty: false, edycja: false });
+  const cwiczenia = p.plan_cwiczenia.sort((a, b) => a.id - b.id);
+
   const div = document.createElement('div');
   div.className = 'plan';
   div.id = `plan-${p.id}`;
 
-  // nazwa planu (edytowalna)
+  // ---- zwinięty wiersz: strzałka, nazwa, liczba ćwiczeń, przyciski ----
+  const wiersz = document.createElement('div');
+  wiersz.className = 'planWiersz';
+  wiersz.setAttribute('role', 'button');
+  wiersz.tabIndex = 0;
+
+  const strzalka = document.createElement('span');
+  strzalka.className = 'planStrzalka';
+  const nazwa = document.createElement('b');
+  nazwa.className = 'planNazwa';
+  nazwa.textContent = p.nazwa;
+  const licznik = document.createElement('span');
+  licznik.className = 'planLicznik';
+  licznik.textContent = liczbaCwiczen(cwiczenia.length);
+
+  const akcje = document.createElement('span');
+  akcje.className = 'planAkcje';
+  const start = document.createElement('button');
+  start.className = 'btn';
+  start.textContent = 'Zacznij trening';
+  start.onclick = () => zacznijTreningZPlanu(p.id);
+  const edytuj = document.createElement('button');
+  edytuj.className = 'btn';
+  edytuj.textContent = stan.edycja ? 'Gotowe' : 'Edytuj';
+  edytuj.onclick = () => {
+    stan.edycja = !stan.edycja;
+    if (stan.edycja) stan.otwarty = true;
+    wczytajPlany();   // świeże dane z bazy, stan planów jest zapamiętany
+  };
+  akcje.append(start, ' ', edytuj);
+  wiersz.append(strzalka, nazwa, licznik, akcje);
+
+  const przelacz = () => {
+    stan.otwarty = !stan.otwarty;
+    ustawOtwarcie(div, stan.otwarty);
+  };
+  wiersz.addEventListener('click', e => {
+    if (e.target.closest('button')) return;   // przyciski mają własne akcje
+    przelacz();
+  });
+  wiersz.addEventListener('keydown', e => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target === wiersz) {
+      e.preventDefault();
+      przelacz();
+    }
+  });
+
+  // ---- rozwinięta część: odczyt albo edycja ----
+  const szczegoly = document.createElement('div');
+  szczegoly.className = 'planSzczegoly';
+  szczegoly.append(...(stan.edycja ? edycjaPlanu(p, cwiczenia) : odczytPlanu(cwiczenia)));
+
+  div.append(wiersz, szczegoly);
+  ustawOtwarcie(div, stan.otwarty);
+  return div;
+}
+
+// lista ćwiczeń tylko do odczytu + podsumowanie
+function odczytPlanu(cwiczenia) {
+  if (cwiczenia.length === 0) {
+    const pusty = document.createElement('p');
+    pusty.className = 'planPusty';
+    pusty.textContent = 'Ten plan nie ma jeszcze ćwiczeń. Kliknij Edytuj, żeby je dodać.';
+    return [pusty];
+  }
+  const elementy = cwiczenia.map((c, i) => {
+    const w = document.createElement('div');
+    w.className = 'planCw';
+    const nr = document.createElement('span');
+    nr.className = 'planNr';
+    nr.textContent = (i + 1) + '.';
+    const n = document.createElement('span');
+    n.className = 'planCwNazwa';
+    n.textContent = c.nazwa;
+    const serie = document.createElement('span');
+    serie.className = 'planCwSerie';
+    serie.textContent = liczbaSerii(c.serie);
+    w.append(nr, n, serie);
+    return w;
+  });
+  const razem = document.createElement('div');
+  razem.className = 'planRazem';
+  const sumaSerii = cwiczenia.reduce((suma, c) => suma + (c.serie || 0), 0);
+  razem.textContent = `Razem: ${liczbaCwiczen(cwiczenia.length)}, ${liczbaSerii(sumaSerii)}`;
+  return [...elementy, razem];
+}
+
+// edycja: nazwa planu, ćwiczenia (nazwa + serie) i dodawanie nowych
+function edycjaPlanu(p, cwiczenia) {
   const naglowek = document.createElement('p');
-  const nazwa = document.createElement('input');
-  nazwa.type = 'text';
-  nazwa.className = 'planNazwaInput';
-  nazwa.value = p.nazwa;
-  const zapisz = document.createElement('button');
-  zapisz.textContent = 'Zapisz nazwę';
-  zapisz.className = 'btn';
-  zapisz.onclick = () => zapiszNazwePlanu(p.id, nazwa.value, zapisz);
+  naglowek.className = 'planEdycjaNazwa';
+  const nazwaInput = document.createElement('input');
+  nazwaInput.type = 'text';
+  nazwaInput.className = 'planNazwaInput';
+  nazwaInput.value = p.nazwa;
+  const zapiszNazwa = document.createElement('button');
+  zapiszNazwa.className = 'btn';
+  zapiszNazwa.textContent = 'Zapisz nazwę';
+  zapiszNazwa.onclick = () => zapiszNazwePlanu(p.id, nazwaInput.value, zapiszNazwa);
   const usun = document.createElement('button');
-  usun.textContent = 'Usuń plan';
   usun.className = 'btn-usun';
+  usun.textContent = 'Usuń plan';
   usun.onclick = () => usunPlan(p.id);
-  naglowek.append(nazwa, ' ', zapisz, ' ', usun);
-  div.appendChild(naglowek);
+  naglowek.append(nazwaInput, ' ', zapiszNazwa, ' ', usun);
 
-  // ćwiczenia w planie
   const ul = document.createElement('ul');
-  p.plan_cwiczenia.sort((a, b) => a.id - b.id).forEach(c => ul.appendChild(zbudujCwiczenie(c)));
-  div.appendChild(ul);
+  cwiczenia.forEach(c => ul.appendChild(zbudujCwiczenie(c)));
 
-  // dodawanie nowego ćwiczenia do tego planu
   const nowe = document.createElement('p');
   nowe.className = 'noweCw';
   nowe.innerHTML = `<input type="text" class="nNazwa" placeholder="Nowe ćwiczenie">
     <input type="number" class="nSerie" placeholder="Serie"> `;
   const dodaj = document.createElement('button');
-  dodaj.textContent = 'Dodaj ćwiczenie';
   dodaj.className = 'btn';
+  dodaj.textContent = 'Dodaj ćwiczenie';
   dodaj.onclick = () => dodajCwiczeniePlanu(p.id, nowe);
   nowe.appendChild(dodaj);
-  div.appendChild(nowe);
 
-  return div;
+  return [naglowek, ul, nowe];
 }
 
+// jedno ćwiczenie w trybie edycji planu
 function zbudujCwiczenie(c) {
   const li = document.createElement('li');
   li.id = `cw-${c.id}`;
   li.innerHTML = `<input type="text" class="eNazwa" value="${trEsc(c.nazwa)}">
     <input type="number" class="eSerie" value="${c.serie}"> serie `;
   const zapisz = document.createElement('button');
-  zapisz.textContent = 'Zapisz';
   zapisz.className = 'btn';
-  zapisz.onclick = () => zapiszCwiczenie(c.id, li, zapisz);
+  zapisz.textContent = 'Zapisz';
+  zapisz.onclick = () => zapiszCwiczeniePlanu(c.id, li, zapisz);
   li.append(zapisz, ' ', usunBtn('plan_cwiczenia', c.id, wczytajPlany));
   return li;
+}
+
+// szybki start: przechodzi do zakładki Treningi i otwiera trening z tego planu
+async function zacznijTreningZPlanu(planId) {
+  pokazTr('trSesja');
+  document.getElementById('sesjaPlan').value = String(planId);
+  await zacznijZPlanu();
 }
 
 function mignij(przycisk) {
@@ -118,9 +237,10 @@ function mignij(przycisk) {
 async function dodajPlan() {
   const nazwa = document.getElementById('planNazwa').value.trim();
   if (!nazwa) return alert('Podaj nazwę planu');
-  const { error } = await db.from('plany').insert({ nazwa });
+  const { data, error } = await db.from('plany').insert({ nazwa }).select().single();
   if (error) return alert('Błąd: ' + error.message);
   document.getElementById('planNazwa').value = '';
+  planyStan[data.id] = { otwarty: true, edycja: true };   // nowy plan od razu w edycji, żeby dodać ćwiczenia
   wczytajPlany();
 }
 
@@ -129,13 +249,14 @@ async function zapiszNazwePlanu(id, nazwa, przycisk) {
   if (!nazwa) return alert('Nazwa planu nie może być pusta');
   const { error } = await db.from('plany').update({ nazwa }).eq('id', id);
   if (error) return alert('Błąd: ' + error.message);
-  mignij(przycisk);
+  wczytajPlany();   // odświeża nazwę w wierszu planu i na liście wyboru
 }
 
 async function usunPlan(id) {
   if (!confirm('Usunąć plan razem z jego ćwiczeniami?')) return;
   const { error } = await db.from('plany').delete().eq('id', id);
   if (error) return alert('Błąd: ' + error.message);
+  delete planyStan[id];
   wczytajPlany();
 }
 
@@ -150,7 +271,8 @@ async function dodajCwiczeniePlanu(plan_id, wiersz) {
   wczytajPlany();
 }
 
-async function zapiszCwiczenie(id, li, przycisk) {
+// (wcześniej ta funkcja nazywała się tak samo jak zapis ćwiczenia w treningu i była przez nią nadpisana)
+async function zapiszCwiczeniePlanu(id, li, przycisk) {
   const nazwa = li.querySelector('.eNazwa').value.trim();
   const serie = parseInt(li.querySelector('.eSerie').value);
   if (!nazwa || !serie) {
